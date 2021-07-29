@@ -145,5 +145,5 @@ def split_train_val_test(in_dir, out_dir, test_size=[0.1, 0.1], random_state=[20
                 shutil.copy(src_img, dst_dir)
 
 if __name__ == '__main__':
-    split_train_val_test('../../data/0528_gen', 'input')
+    split_train_val_test('../../data/0703_gen', 'input')
     

@@ -4,6 +4,7 @@ import pickle
 import glob
 import random
 import imutils
+import shutil
 import numpy as np
 from tqdm import tqdm
 import matplotlib.pyplot as plt
@@ -19,7 +20,7 @@ from torch.autograd import Variable
 import argparse
 from config import NUM_CLASS
 
-NUM_TTA = 100
+NUM_TTA = 1000
 
 cls_to_idx = {'Deng': 0, 'Dengb': 1, 'Dengl': 2, 'SimSun': 3, 'msyh': 4, 'msyhbd': 5, 'simfang': 6, 'simhei': 7, 'simkai': 8}
 idx_to_cls = {v: k for k, v in cls_to_idx.items()}
@@ -58,7 +59,7 @@ def process_image(img, target=224, prior_size=256, center_crop=True):
     img = torch.from_numpy(img)
     return img
 
-class Sperm_Recog_DL():
+class FontClassifier():
     def __init__(self, model_path='output/models/checkpoint/resnet34-epoch-1.pth',
                  log_file='output/result.log', crop_size=224, input_size=256):
         self.model_path = model_path
@@ -69,7 +70,7 @@ class Sperm_Recog_DL():
         if os.path.exists(self.log_file):
             os.remove(self.log_file)
 
-    def sperm_recognition(self, img_path):
+    def inference(self, img_path):
         assert os.path.exists(self.model_path)
         saved_model = torch.load(self.model_path, 'cpu')
         model = models.resnet34()
@@ -119,8 +120,9 @@ class Sperm_Recog_DL():
                 # else:
                 #     color = (0, 0, 255)
                 # im = cv2.drawKeypoints(im, [kp], np.array([]), color, cv2.DRAW_MATCHES_FLAGS_DRAW_RICH_KEYPOINTS)
+        result = idx_to_cls[np.argmax(count)]
         print('count: ', count)
-        print('result: ', idx_to_cls[np.argmax(count)])
+        print('result: ', result)
         print('-' * 100)
         # # visualize result
         # im_bgr = cv2.cvtColor(im, cv2.COLOR_RGB2BGR)
@@ -156,23 +158,18 @@ class Sperm_Recog_DL():
         # cv2.imwrite(os.path.join("../figure", 'dl_' + os.path.basename(img_path)), im_bgr)
         # #cv2.waitKey(0)
 
-        # # save result to log file
-        # with open(self.log_file, 'a') as f:
-        #     # line 1: source image path
-        #     f.write(img_path + '\n')
-        #     # line 2: number of sperms detected
-        #     f.write(str(len(keypoints)) + '\n')
-        #     for i in range(len(keypoints)):
-        #         # coordinate of each sperm
-        #         f.write(' '.join(map(str, keypoints[i].pt)) + '\n')
-        #         # probability of good sperm
-        #         f.write(str(prob_list[i]) + '\n')
-        #         # minor axis and major axis of the ellipse
-        #         if self.enclosing_type == EnclosureType.RECT:
-        #             f.write(' '.join(map(str, get_ellipse_param(enclosure_list[i]))) + '\n')
-        #         elif self.enclosing_type == EnclosureType.ECLLIPSE:
-        #             f.write(' '.join(map(str, enclosure_list[i][1])) + '\n')
-
+        # save result to log file
+        with open(self.log_file, 'a') as f:
+            f.write(img_path + '\n')
+            f.write(result + '\n')
+            # classify images into folders
+            out_dir = os.path.join(os.path.dirname(self.log_file), 'times', result)
+            if not os.path.isdir(out_dir):
+                os.makedirs(out_dir)
+            img_name = os.path.basename(img_path)
+            shutil.copy(img_path, os.path.join(out_dir, img_name))
+            
+            
 
 if __name__ == "__main__":
 
@@ -181,13 +178,14 @@ if __name__ == "__main__":
     # parser.add_argument("--path", type=str, default="D:/ai_medi_test_img/2019_03_12_13_46_31.jpg", help="file/folder path")
     # args = parser.parse_args()
 
-    srdl = Sperm_Recog_DL(model_path='output/models/checkpoint/resnet34-epoch-12.pth', log_file='output/result.log',
+    font_classifier = FontClassifier(model_path='output/models/checkpoint/resnet34-epoch-12.pth', log_file='output/result.log',
                           crop_size=112, input_size=128)
 
     # in_dir = 'input/test/simhei'
-    in_dir = 'test_images'
+    in_dir = 'test_images2'
 
     if os.path.isdir(in_dir):
-        images = glob.glob(os.path.join(in_dir, '**', '*.jpg'), recursive=True)[:20]
+        # images = glob.glob(os.path.join(in_dir, '**', '*.jpg'), recursive=True)[:20]        
+        images = glob.glob(os.path.join(in_dir, '**', '*.jpg'), recursive=True)
         for img in tqdm(images, desc='running ...', ncols=100):
-            srdl.sperm_recognition(img)
+            font_classifier.inference(img)

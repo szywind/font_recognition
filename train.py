@@ -270,7 +270,7 @@ def visualize_model(model, num_images=6):
 
 
 ## Finetuning the convnet
-def fine_tune(num_classes, num_folds=1, criterion=nn.CrossEntropyLoss(), do_dropout=False):
+def fine_tune(num_classes, num_folds=1, criterion=nn.CrossEntropyLoss(), do_dropout=False, num_epochs=100):
     model_ft = backbones[MODEL](pretrained=True)
 
     num_ftrs = model_ft.fc.in_features
@@ -290,12 +290,12 @@ def fine_tune(num_classes, num_folds=1, criterion=nn.CrossEntropyLoss(), do_drop
 
     if num_folds == 1:
         model_ft = train_model(model_ft, criterion, optimizer_ft, exp_lr_scheduler,
-                               num_epochs=60)
+                               num_epochs=num_epochs)
 
         visualize_model(model_ft)
         model_ft = [model_ft]
     else:
-        model_ft = train_model_cv(model_ft, criterion, optimizer_ft, exp_lr_scheduler, num_epochs=60)
+        model_ft = train_model_cv(model_ft, criterion, optimizer_ft, exp_lr_scheduler, num_epochs=num_epochs)
     return model_ft
 
 
@@ -449,7 +449,7 @@ def test_cv(model_path_list, num_classes):
 
 if __name__ == "__main__":
     config_idx = 1
-    is_train = False
+    is_train = True
 
     cfg = configurations[config_idx]
     MODEL = cfg['MODEL']
@@ -494,7 +494,8 @@ if __name__ == "__main__":
         'train': transforms.Compose([
             transforms.Resize(in_size),
             # transforms.RandomRotation(180, PIL.Image.BILINEAR),
-            transforms.CenterCrop(crop_size),
+            # transforms.CenterCrop(crop_size),
+            transforms.RandomCrop(crop_size),
             transforms.GaussianBlur(kernel_size=3),
             # transforms.RandomHorizontalFlip(),
             transforms.ColorJitter(0.125, 0.125, 0.125, 0.125),
@@ -583,7 +584,7 @@ if __name__ == "__main__":
     if is_train:
         num_classes = len(image_datasets['train'].classes)
         print('# classes: ', num_classes)
-        model = fine_tune(num_classes=num_classes, num_folds=NUM_FOLD)
+        model = fine_tune(num_classes=num_classes, num_folds=NUM_FOLD, num_epochs=100)
         if len(model) > 1:
             test_cv(model, num_classes)
         else:
